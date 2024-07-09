@@ -19,7 +19,7 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 from timm.models.swin_transformer import SwinTransformer
 from torchvision import transforms
 from torchvision.transforms.functional import resize, rotate
-from transformers import MBartConfig, MBartForCausalLM, XLMRobertaTokenizer
+from transformers import MBartConfig, MBartForCausalLM, BertTokenizer
 from transformers.file_utils import ModelOutput
 from transformers.modeling_utils import PretrainedConfig, PreTrainedModel
 
@@ -157,9 +157,13 @@ class BARTDecoder(nn.Module):
         self.decoder_layer = decoder_layer
         self.max_position_embeddings = max_position_embeddings
 
-        self.tokenizer = XLMRobertaTokenizer.from_pretrained(
-            "hyunwoongko/asian-bart-ecjk" if not name_or_path else name_or_path
+        self.tokenizer = BertTokenizer.from_pretrained(
+            "dbmdz/bert-base-german-cased"
         )
+
+        EOS_TOKEN = "[EOS]"
+        if EOS_TOKEN not in self.tokenizer.vocab:
+            self.tokenizer.add_special_tokens({'eos_token': EOS_TOKEN})
 
         self.model = MBartForCausalLM(
             config=MBartConfig(
@@ -179,25 +183,6 @@ class BARTDecoder(nn.Module):
         self.add_special_tokens(["<sep/>"])  # <sep/> is used for representing a list in a JSON
         self.model.model.decoder.embed_tokens.padding_idx = self.tokenizer.pad_token_id
         self.model.prepare_inputs_for_generation = self.prepare_inputs_for_inference
-
-        # weight init with asian-bart
-        if not name_or_path:
-            bart_state_dict = MBartForCausalLM.from_pretrained("hyunwoongko/asian-bart-ecjk").state_dict()
-            new_bart_state_dict = self.model.state_dict()
-            for x in new_bart_state_dict:
-                if x.endswith("embed_positions.weight") and self.max_position_embeddings != 1024:
-                    new_bart_state_dict[x] = torch.nn.Parameter(
-                        self.resize_bart_abs_pos_emb(
-                            bart_state_dict[x],
-                            self.max_position_embeddings
-                            + 2,  # https://github.com/huggingface/transformers/blob/v4.11.3/src/transformers/models/mbart/modeling_mbart.py#L118-L119
-                        )
-                    )
-                elif x.endswith("embed_tokens.weight") or x.endswith("lm_head.weight"):
-                    new_bart_state_dict[x] = bart_state_dict[x][: len(self.tokenizer), :]
-                else:
-                    new_bart_state_dict[x] = bart_state_dict[x]
-            self.model.load_state_dict(new_bart_state_dict)
 
     def add_special_tokens(self, list_of_tokens: List[str]):
         """
@@ -349,13 +334,13 @@ class DonutConfig(PretrainedConfig):
 
     def __init__(
         self,
-        input_size: List[int] = [2560, 1920],
+        input_size: List[int] = [640, 640],
         align_long_axis: bool = False,
         window_size: int = 10,
-        encoder_layer: List[int] = [2, 2, 14, 2],
+        encoder_layer: List[int] = [2, 2, 5, 2],
         decoder_layer: int = 4,
         max_position_embeddings: int = None,
-        max_length: int = 1536,
+        max_length: int = 1024,
         name_or_path: Union[str, bytes, os.PathLike] = "",
         **kwargs,
     ):
@@ -383,6 +368,7 @@ class DonutModel(PreTrainedModel):
     def __init__(self, config: DonutConfig):
         super().__init__(config)
         self.config = config
+        print(config)
         self.encoder = SwinEncoder(
             input_size=self.config.input_size,
             align_long_axis=self.config.align_long_axis,
