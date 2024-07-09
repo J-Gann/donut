@@ -66,6 +66,7 @@ class DonutDataset(Dataset):
 
         self.gt_token_sequences = []
         for sample in self.dataset:
+            print(sample["ground_truth"])
             ground_truth = json.loads(sample["ground_truth"])
             if "gt_parses" in ground_truth:  # when multiple ground truths are available, e.g., docvqa
                 assert isinstance(ground_truth["gt_parses"], list)
@@ -76,7 +77,7 @@ class DonutDataset(Dataset):
 
             self.gt_token_sequences.append(
                 [
-                    task_start_token
+                    self.task_start_token
                     + self.donut_model.json2token(
                         gt_json,
                         update_special_tokens_for_json_key=self.split == "train",
