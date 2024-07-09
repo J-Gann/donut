@@ -165,6 +165,7 @@ class BARTDecoder(nn.Module):
         if EOS_TOKEN not in self.tokenizer.vocab:
             self.tokenizer.add_special_tokens({'eos_token': EOS_TOKEN})
 
+
         self.model = MBartForCausalLM(
             config=MBartConfig(
                 is_decoder=True,
@@ -216,6 +217,7 @@ class BARTDecoder(nn.Module):
         }
         return output
 
+
     def forward(
         self,
         input_ids,
@@ -229,7 +231,7 @@ class BARTDecoder(nn.Module):
         return_dict: bool = None,
     ):
         """
-        A forward fucntion to get cross attentions and utilize `generate` function
+        A forward function to get cross attentions and utilize `generate` function
 
         Source:
         https://github.com/huggingface/transformers/blob/v4.11.3/src/transformers/models/mbart/modeling_mbart.py#L1669-L1810
@@ -251,6 +253,7 @@ class BARTDecoder(nn.Module):
             output_hidden_states if output_hidden_states is not None else self.model.config.output_hidden_states
         )
         return_dict = return_dict if return_dict is not None else self.model.config.use_return_dict
+
         outputs = self.model.model.decoder(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -334,13 +337,13 @@ class DonutConfig(PretrainedConfig):
 
     def __init__(
         self,
-        input_size: List[int] = [640, 640],
+        input_size: List[int] = [2560, 1920],
         align_long_axis: bool = False,
         window_size: int = 10,
-        encoder_layer: List[int] = [2, 2, 5, 2],
+        encoder_layer: List[int] = [2, 2, 14, 2],
         decoder_layer: int = 4,
         max_position_embeddings: int = None,
-        max_length: int = 1024,
+        max_length: int = 1536,
         name_or_path: Union[str, bytes, os.PathLike] = "",
         **kwargs,
     ):
